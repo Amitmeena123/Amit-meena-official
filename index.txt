@@ -1,0 +1,70 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="Advanced Live Object Detection with Speed Tracking - Real-time AI powered camera detection system">
+    <meta name="keywords" content="object detection, AI, camera, real-time, speed tracking, machine learning">
+    <meta name="author" content="Advanced Object Detection System">
+    <title>🤖 Advanced Live Object Detection | AI Speed Tracking</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    
+    <!-- Preload TensorFlow for better performance -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd" as="script">
+    
+    <!-- TensorFlow.js and COCO-SSD Model -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Advanced Live Object Detection</h1>
+        <p style="margin-bottom: 20px; font-size: 1.1rem; opacity: 0.9;">
+            🚀 AI-Powered Real-time Detection | 🏃‍♂️ Speed Tracking | 📱 Press F for Fullscreen
+        </p>
+        
+        <div class="camera-container">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn">🎥 Start Advanced Camera</button>
+            <button id="stopBtn" disabled>⏹️ Stop Camera</button>
+        </div>
+        
+        <div class="detection-info">
+            <h3>🎯 Real-time Object Detection & Speed Analysis</h3>
+            <div id="detections">
+                <div class="detection-item">🔍 Camera शुरू करें detection के लिए</div>
+            </div>
+        </div>
+        
+        <div class="status" id="status">
+            🚀 Advanced AI System Ready | Click "Start Advanced Camera" to begin real-time detection
+        </div>
+        
+        <div style="margin-top: 20px; font-size: 0.9rem; opacity: 0.8;">
+            <p>🎯 <strong>Supported Objects:</strong> Cars, Buses, People, Motorcycles, Bicycles, Animals, Traffic Signs & More!</p>
+            <p>⚡ <strong>Features:</strong> Speed Detection | Direction Tracking | Hindi Names | FPS Counter | Fullscreen Mode</p>
+            <p>🔧 <strong>Controls:</strong> F = Fullscreen | ESC = Exit Fullscreen</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    
+    <!-- Performance monitoring -->
+    <script>
+        // Monitor performance
+        window.addEventListener('load', () => {
+            console.log('🚀 System Performance:', {
+                deviceMemory: navigator.deviceMemory || 'Unknown',
+                hardwareConcurrency: navigator.hardwareConcurrency || 'Unknown',
+                userAgent: navigator.userAgent.substring(0, 50) + '...'
+            });
+        });
+    </script>
+</body>
+</html>

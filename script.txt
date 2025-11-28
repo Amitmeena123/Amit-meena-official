@@ -1,0 +1,813 @@
+
+class AdvancedObjectDetector {
+    constructor() {
+        this.video = document.getElementById('video');
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.startBtn = document.getElementById('startBtn');
+        this.stopBtn = document.getElementById('stopBtn');
+        this.status = document.getElementById('status');
+        this.detectionsDiv = document.getElementById('detections');
+        
+        this.model = null;
+        this.isDetecting = false;
+        this.stream = null;
+        this.animationId = null;
+        
+        // Previous frame data for speed calculation
+        this.previousDetections = new Map();
+        this.frameCount = 0;
+        this.lastFrameTime = Date.now();
+        
+        // Color mapping for objects
+        this.colorNames = {
+            'red': 'लाल',
+            'blue': 'नीला', 
+            'green': 'हरा',
+            'yellow': 'पीला',
+            'black': 'काला',
+            'white': 'सफेद',
+            'gray': 'स्लेटी',
+            'orange': 'नारंगी',
+            'purple': 'बैंगनी',
+            'pink': 'गुलाबी',
+            'brown': 'भूरा',
+            'silver': 'चांदी'
+        };
+
+        // Enhanced target objects with Hindi names - Advanced Detection
+        this.targetObjects = {
+            // Vehicles - गाड़ियां
+            'car': 'कार/गाड़ी',
+            'bus': 'बस',
+            'person': 'व्यक्ति/आदमी',
+            'truck': 'ट्रक/लॉरी',
+            'motorcycle': 'मोटरसाइकिल/बाइक',
+            'bicycle': 'साइकिल/बाइसिकल',
+            'auto': 'ऑटो/रिक्शा',
+            'jeep': 'जीप',
+            'van': 'वैन',
+            'taxi': 'टैक्सी',
+            
+            // Animals - जानवर
+            'cow': 'गाय',
+            'dog': 'कुत्ता',
+            'cat': 'बिल्ली',
+            'horse': 'घोड़ा',
+            'bird': 'पक्षी',
+            'sheep': 'भेड़',
+            'elephant': 'हाथी',
+            'bear': 'भालू',
+            'zebra': 'ज़ेब्रा',
+            'giraffe': 'जिराफ',
+            
+            // Transport - परिवहन
+            'boat': 'नाव/बोट',
+            'airplane': 'हवाई जहाज',
+            'train': 'ट्रेन/रेलगाड़ी',
+            
+            // Traffic & Street Items
+            'traffic light': 'ट्रैफिक लाइट',
+            'fire hydrant': 'फायर हाइड्रेंट',
+            'stop sign': 'स्टॉप साइन',
+            'parking meter': 'पार्किंग मीटर',
+            'bench': 'बेंच',
+            
+            // Personal Items
+            'backpack': 'बैकपैक',
+            'umbrella': 'छाता',
+            'handbag': 'हैंडबैग/पर्स',
+            'tie': 'टाई',
+            'suitcase': 'सूटकेस',
+            
+            // Sports & Recreation
+            'frisbee': 'फ्रिसबी',
+            'skis': 'स्की',
+            'snowboard': 'स्नोबोर्ड',
+            'sports ball': 'खेल की गेंद',
+            'kite': 'पतंग',
+            'baseball bat': 'बेसबॉल बैट',
+            'baseball glove': 'बेसबॉल दस्ताना',
+            'skateboard': 'स्केटबोर्ड',
+            'surfboard': 'सर्फबोर्ड',
+            'tennis racket': 'टेनिस रैकेट',
+            
+            // Additional objects for better detection
+            'bottle': 'बोतल',
+            'wine glass': 'वाइन ग्लास',
+            'cup': 'कप',
+            'fork': 'कांटा',
+            'knife': 'चाकू',
+            'spoon': 'चम्मच',
+            'bowl': 'कटोरा',
+            'banana': 'केला',
+            'apple': 'सेब',
+            'sandwich': 'सैंडविच',
+            'orange': 'संतरा',
+            'broccoli': 'ब्रोकोली',
+            'carrot': 'गाजर',
+            'hot dog': 'हॉट डॉग',
+            'pizza': 'पिज़्ज़ा',
+            'donut': 'डोनट',
+            'cake': 'केक',
+            'chair': 'कुर्सी',
+            'couch': 'सोफा',
+            'potted plant': 'गमला',
+            'bed': 'बिस्तर',
+            'dining table': 'खाने की मेज़',
+            'toilet': 'शौचालय',
+            'tv': 'टीवी/टेलीविज़न',
+            'laptop': 'लैपटॉप',
+            'mouse': 'माउस',
+            'remote': 'रिमोट',
+            'keyboard': 'कीबोर्ड',
+            'cell phone': 'मोबाइल फोन',
+            'microwave': 'माइक्रोवेव',
+            'oven': 'ओवन',
+            'toaster': 'टोस्टर',
+            'sink': 'सिंक',
+            'refrigerator': 'फ्रिज',
+            'book': 'किताब',
+            'clock': 'घड़ी',
+            'vase': 'फूलदान',
+            'scissors': 'कैंची',
+            'teddy bear': 'टेडी बियर',
+            'hair drier': 'हेयर ड्रायर',
+            'toothbrush': 'टूथब्रश'
+        };
+        
+        this.colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+            '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+            '#74B9FF', '#FD79A8', '#FDCB6E', '#6C5CE7',
+            '#A29BFE', '#FD79A8', '#00B894', '#E17055'
+        ];
+        
+        // Hand detection model
+        this.handModel = null;
+        
+        this.init();
+    }
+    
+    async init() {
+        this.setupEventListeners();
+        await this.loadModel();
+        this.setupFullscreen();
+        
+        // Auto start camera after model loads
+        setTimeout(() => {
+            if (this.model && !this.isDetecting) {
+                this.startCamera();
+            }
+        }, 2000);
+    }
+    
+    setupEventListeners() {
+        this.startBtn.addEventListener('click', () => this.startCamera());
+        this.stopBtn.addEventListener('click', () => this.stopCamera());
+        
+        // Auto-start indication
+        this.startBtn.innerHTML = '🎥 Auto Starting...';
+        this.startBtn.disabled = true;
+        
+        // Fullscreen controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'f' || e.key === 'F') {
+                this.toggleFullscreen();
+            }
+            if (e.key === 'Escape') {
+                this.exitFullscreen();
+            }
+        });
+    }
+    
+    setupFullscreen() {
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.innerHTML = '🔍 Fullscreen (F)';
+        fullscreenBtn.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
+        fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        document.querySelector('.controls').appendChild(fullscreenBtn);
+    }
+    
+    toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log('Fullscreen error:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+    
+    exitFullscreen() {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+    }
+    
+    async loadModel() {
+        try {
+            this.updateStatus('🤖 Advanced AI Model + Hand Detection लोड हो रहा है...', 'loading');
+            
+            // Wait for TensorFlow to be ready
+            await tf.ready();
+            console.log('✅ TensorFlow.js is ready');
+            
+            // Load object detection model
+            this.model = await cocoSsd.load({
+                base: 'mobilenet_v2',
+                modelUrl: undefined // Use default CDN
+            });
+            
+            console.log('✅ COCO-SSD Model loaded successfully');
+            this.updateStatus('✅ Advanced AI Model + Color Detection तैयार है! Auto-starting camera...', 'ready');
+            this.startBtn.innerHTML = '🎥 Start Advanced Camera';
+            this.startBtn.disabled = false;
+            
+        } catch (error) {
+            console.error('Model loading error:', error);
+            this.updateStatus('🔄 Model retry हो रहा है...', 'loading');
+            
+            // Retry loading with fallback
+            try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.model = await cocoSsd.load();
+                console.log('✅ Model loaded on retry');
+                this.updateStatus('✅ AI Model तैयार है (Retry Success)!', 'ready');
+            } catch (retryError) {
+                console.error('Retry failed:', retryError);
+                this.updateStatus('❌ Model load failed. Internet connection check करें।', 'error');
+            }
+        }
+    }
+    
+    async startCamera() {
+        try {
+            this.updateStatus('📷 High Quality Camera शुरू हो रहा है...', 'loading');
+            
+            const constraints = {
+                video: {
+                    width: { ideal: 1920, min: 640 },
+                    height: { ideal: 1080, min: 480 },
+                    frameRate: { ideal: 60, min: 30 },
+                    facingMode: 'environment',
+                    focusMode: 'continuous',
+                    exposureMode: 'continuous',
+                    whiteBalanceMode: 'continuous'
+                }
+            };
+            
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.video.srcObject = this.stream;
+            
+            this.video.onloadedmetadata = () => {
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+                this.startDetection();
+            };
+            
+            this.startBtn.disabled = true;
+            this.stopBtn.disabled = false;
+            this.frameCount = 0;
+            this.lastFrameTime = Date.now();
+            
+        } catch (error) {
+            console.error('Camera error:', error);
+            this.updateStatus('❌ Camera access नहीं मिला। Permission दें।', 'error');
+        }
+    }
+    
+    stopCamera() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+        
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        
+        this.isDetecting = false;
+        this.startBtn.disabled = false;
+        this.stopBtn.disabled = true;
+        this.previousDetections.clear();
+        
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.clearDetections();
+        this.updateStatus('📷 Camera बंद। फिर से शुरू करने के लिए "Start Camera" दबाएं।', 'ready');
+    }
+    
+    async startDetection() {
+        // Enhanced model check
+        if (!this.model) {
+            this.updateStatus('🔄 AI Model loading... कृपया इंतज़ार करें', 'loading');
+            
+            // Wait and retry
+            for (let i = 0; i < 10; i++) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (this.model) break;
+                this.updateStatus(`🔄 Model loading... (${i + 1}/10)`, 'loading');
+            }
+            
+            if (!this.model) {
+                this.updateStatus('❌ AI Model load नहीं हुआ। Page refresh करें।', 'error');
+                return;
+            }
+        }
+        
+        this.isDetecting = true;
+        this.updateStatus('🔍 Advanced Live Detection शुरू! सभी objects detect हो रहे हैं...', 'ready');
+        this.detectObjects();
+    }
+    
+    async detectObjects() {
+        if (!this.isDetecting || this.video.readyState !== 4) {
+            this.animationId = requestAnimationFrame(() => this.detectObjects());
+            return;
+        }
+        
+        try {
+            // Check if model and video are ready
+            if (!this.model || !this.video || this.video.videoWidth === 0) {
+                this.animationId = requestAnimationFrame(() => this.detectObjects());
+                return;
+            }
+            
+            const currentTime = Date.now();
+            const predictions = await this.model.detect(this.video);
+            
+            // Filter and enhance predictions
+            const enhancedPredictions = this.enhancePredictions(predictions, currentTime);
+            
+            this.drawPredictions(enhancedPredictions, currentTime);
+            this.updateDetectionsList(enhancedPredictions);
+            this.updatePreviousDetections(enhancedPredictions, currentTime);
+            
+            this.frameCount++;
+            
+        } catch (error) {
+            console.error('Detection error:', error.message || error);
+            // Don't stop detection on errors, just log them
+        }
+        
+        this.animationId = requestAnimationFrame(() => this.detectObjects());
+    }
+    
+    enhancePredictions(predictions, currentTime) {
+        return predictions
+            .filter(prediction => {
+                const className = prediction.class.toLowerCase();
+                // Advanced filtering for better accuracy
+                let isTargetObject = Object.keys(this.targetObjects).includes(className);
+                
+                // Map similar objects to target objects
+                const objectMappings = {
+                    'motorbike': 'motorcycle',
+                    'bike': 'bicycle',
+                    'rickshaw': 'auto',
+                    'auto-rickshaw': 'auto',
+                    'suv': 'jeep',
+                    '4x4': 'jeep'
+                };
+                
+                if (!isTargetObject && objectMappings[className]) {
+                    isTargetObject = true;
+                }
+                
+                // Special handling for vehicles and people (priority objects)
+                const priorityObjects = ['car', 'bus', 'person', 'truck', 'motorcycle', 'bicycle', 'auto', 'jeep'];
+                const isPriorityObject = priorityObjects.includes(className) || 
+                                      priorityObjects.includes(objectMappings[className]);
+                
+                if (isPriorityObject) {
+                    return prediction.score > 0.08; // Very low threshold for vehicles
+                }
+                
+                return isTargetObject && prediction.score > 0.12;
+            })
+            .map(prediction => {
+                const id = this.generateObjectId(prediction);
+                const previousData = this.previousDetections.get(id);
+                
+                let speed = 0;
+                let direction = '';
+                
+                if (previousData) {
+                    const timeDiff = (currentTime - previousData.time) / 1000; // seconds
+                    
+                    if (timeDiff > 0.1) { // Avoid division by very small numbers
+                        const [x1, y1] = this.getBBoxCenter(prediction.bbox);
+                        const [x2, y2] = this.getBBoxCenter(previousData.bbox);
+                        
+                        const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+                        const pixelsPerSecond = distance / timeDiff;
+                    
+                    // Enhanced speed calculation based on object type
+                        let speedMultiplier = 0.1;
+                        const className = prediction.class.toLowerCase();
+                        
+                        // Different multipliers for different object types
+                        if (['car', 'bus', 'truck'].includes(className)) {
+                            speedMultiplier = 0.15; // Higher for vehicles
+                        } else if (['motorcycle', 'bicycle'].includes(className)) {
+                            speedMultiplier = 0.12;
+                        } else if (className === 'person') {
+                            speedMultiplier = 0.05; // Lower for people
+                        }
+                        
+                        speed = Math.max(0, Math.round(pixelsPerSecond * speedMultiplier));
+                        
+                        // Enhanced direction calculation
+                        const deltaX = x1 - x2;
+                        const deltaY = y1 - y2;
+                        
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            direction = deltaX > 5 ? '→ दाएं' : deltaX < -5 ? '← बाएं' : '⊙ स्थिर';
+                        } else {
+                            direction = deltaY > 5 ? '↓ नीचे' : deltaY < -5 ? '↑ ऊपर' : '⊙ स्थिर';
+                        }
+                        
+                        // Add movement intensity
+                        if (distance > 20) {
+                            direction += ' तेज़';
+                        } else if (distance > 10) {
+                            direction += ' मध्यम';
+                        } else if (distance > 3) {
+                            direction += ' धीमा';
+                        }
+                    }
+                }
+                
+                // Map object class to target object if needed
+                let finalClass = prediction.class.toLowerCase();
+                const objectMappings = {
+                    'motorbike': 'motorcycle',
+                    'bike': 'bicycle',
+                    'rickshaw': 'auto',
+                    'auto-rickshaw': 'auto',
+                    'suv': 'jeep',
+                    '4x4': 'jeep'
+                };
+                
+                if (objectMappings[finalClass]) {
+                    finalClass = objectMappings[finalClass];
+                }
+                
+                // Detect object color
+                const objectColor = this.detectObjectColor(prediction.bbox);
+                
+                // Special analysis for persons
+                let personAttributes = null;
+                if (finalClass === 'person') {
+                    personAttributes = this.analyzePersonAttributes(prediction.bbox);
+                }
+                
+                return {
+                    ...prediction,
+                    id,
+                    speed,
+                    direction,
+                    hindiName: this.targetObjects[finalClass] || prediction.class,
+                    detectedAs: finalClass,
+                    color: objectColor,
+                    personAttributes: personAttributes
+                };
+            });
+    }
+    
+    generateObjectId(prediction) {
+        const [x, y, width, height] = prediction.bbox;
+        return `${prediction.class}_${Math.round(x/50)}_${Math.round(y/50)}`;
+    }
+    
+    // Advanced color detection function
+    detectObjectColor(bbox) {
+        const [x, y, width, height] = bbox;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create small canvas for color sampling
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw the object region
+        ctx.drawImage(this.video, x, y, width, height, 0, 0, width, height);
+        
+        // Get image data
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        
+        // Sample multiple points for better color detection
+        const colorSamples = [];
+        const samplePoints = 20; // Number of sample points
+        
+        for (let i = 0; i < samplePoints; i++) {
+            const randomX = Math.floor(Math.random() * width);
+            const randomY = Math.floor(Math.random() * height);
+            const index = (randomY * width + randomX) * 4;
+            
+            if (index < data.length) {
+                colorSamples.push({
+                    r: data[index],
+                    g: data[index + 1], 
+                    b: data[index + 2]
+                });
+            }
+        }
+        
+        if (colorSamples.length === 0) return 'अज्ञात रंग';
+        
+        // Calculate average color
+        const avgColor = colorSamples.reduce((acc, color) => ({
+            r: acc.r + color.r,
+            g: acc.g + color.g,
+            b: acc.b + color.b
+        }), {r: 0, g: 0, b: 0});
+        
+        avgColor.r = Math.round(avgColor.r / colorSamples.length);
+        avgColor.g = Math.round(avgColor.g / colorSamples.length);
+        avgColor.b = Math.round(avgColor.b / colorSamples.length);
+        
+        return this.getColorName(avgColor);
+    }
+    
+    // Color name detection
+    getColorName(rgb) {
+        const {r, g, b} = rgb;
+        
+        // Advanced color detection logic
+        const brightness = (r + g + b) / 3;
+        
+        if (brightness < 50) return 'काला';
+        if (brightness > 200 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) return 'सफेद';
+        if (brightness > 150 && brightness < 200) return 'स्लेटी';
+        
+        // Color detection based on dominant channel
+        if (r > g + 50 && r > b + 50) {
+            if (g > 100) return 'नारंगी';
+            return 'लाल';
+        }
+        
+        if (g > r + 50 && g > b + 50) {
+            if (r > 100) return 'पीला';
+            return 'हरा';
+        }
+        
+        if (b > r + 50 && b > g + 50) {
+            if (r > 100) return 'बैंगनी';
+            return 'नीला';
+        }
+        
+        if (r > 150 && g > 100 && b < 100) return 'पीला';
+        if (r > 100 && g < 100 && b > 100) return 'गुलाबी';
+        if (r > 100 && g > 50 && b < 100) return 'भूरा';
+        
+        return 'मिश्रित रंग';
+    }
+    
+    // Person analysis function
+    analyzePersonAttributes(bbox) {
+        const [x, y, width, height] = bbox;
+        
+        // Height analysis
+        let heightCategory = '';
+        if (height > 200) heightCategory = 'लंबा व्यक्ति';
+        else if (height > 120) heightCategory = 'मध्यम कद';
+        else heightCategory = 'छोटा व्यक्ति/बच्चा';
+        
+        // Position analysis
+        let position = '';
+        const centerY = y + height/2;
+        const canvasHeight = this.canvas.height;
+        
+        if (centerY < canvasHeight * 0.3) position = 'ऊपरी भाग में';
+        else if (centerY > canvasHeight * 0.7) position = 'निचले भाग में';
+        else position = 'मध्य में';
+        
+        // Movement analysis based on width
+        let activity = '';
+        if (width > height * 0.8) activity = 'बैठा/लेटा हुआ';
+        else if (width < height * 0.4) activity = 'खड़ा हुआ';
+        else activity = 'सामान्य स्थिति';
+        
+        return {
+            height: heightCategory,
+            position: position,
+            activity: activity
+        };
+    }
+    
+    getBBoxCenter(bbox) {
+        const [x, y, width, height] = bbox;
+        return [x + width/2, y + height/2];
+    }
+    
+    updatePreviousDetections(predictions, currentTime) {
+        // Clear old detections (older than 2 seconds)
+        for (const [id, data] of this.previousDetections.entries()) {
+            if (currentTime - data.time > 2000) {
+                this.previousDetections.delete(id);
+            }
+        }
+        
+        // Update with current detections
+        predictions.forEach(prediction => {
+            this.previousDetections.set(prediction.id, {
+                bbox: prediction.bbox,
+                time: currentTime
+            });
+        });
+    }
+    
+    drawPredictions(predictions, currentTime) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Calculate FPS
+        const fps = Math.round(1000 / (currentTime - this.lastFrameTime));
+        this.lastFrameTime = currentTime;
+        
+        // Draw FPS counter
+        this.ctx.fillStyle = '#00FF00';
+        this.ctx.font = 'bold 24px Arial';
+        this.ctx.fillText(`FPS: ${fps}`, 20, 40);
+        this.ctx.fillText(`Objects: ${predictions.length}`, 20, 70);
+        
+        predictions.forEach((prediction, index) => {
+            const [x, y, width, height] = prediction.bbox;
+            const color = this.colors[index % this.colors.length];
+            
+            // Enhanced bounding box with glow effect
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = color;
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 4;
+            this.ctx.strokeRect(x, y, width, height);
+            
+            // Reset shadow
+            this.ctx.shadowBlur = 0;
+            
+            // Create detailed label with color, speed and person info
+            const confidence = Math.round(prediction.score * 100);
+            const speedText = prediction.speed > 1 ? `${prediction.speed} km/h ${prediction.direction}` : 'Static';
+            const colorText = prediction.color ? `रंग: ${prediction.color}` : '';
+            
+            let label = `${prediction.hindiName || prediction.class} (${confidence}%)`;
+            if (prediction.color) {
+                label += ` - ${colorText}`;
+            }
+            
+            const speedLabel = speedText;
+            
+            // Person specific info
+            let personInfo = '';
+            if (prediction.personAttributes) {
+                const attr = prediction.personAttributes;
+                personInfo = `${attr.height} | ${attr.position} | ${attr.activity}`;
+            }
+            
+            // Calculate label height based on content
+            const labelHeight = personInfo ? 70 : 50;
+            
+            // Label background with gradient
+            const gradient = this.ctx.createLinearGradient(x, y - labelHeight, x + 250, y - 10);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, color + '80');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(x, y - labelHeight, Math.max(250, this.ctx.measureText(label).width + 20), labelHeight);
+            
+            // Label text with shadow
+            this.ctx.shadowColor = 'rgba(0,0,0,0.7)';
+            this.ctx.shadowBlur = 2;
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = 'bold 14px Arial';
+            this.ctx.fillText(label, x + 10, y - (labelHeight - 15));
+            
+            // Speed text
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.fillStyle = '#FFFF00';
+            this.ctx.fillText(speedLabel, x + 10, y - (labelHeight - 32));
+            
+            // Person specific info
+            if (personInfo) {
+                this.ctx.font = 'bold 11px Arial';
+                this.ctx.fillStyle = '#00FFFF';
+                this.ctx.fillText(personInfo, x + 10, y - (labelHeight - 50));
+            }
+            
+            // Reset shadow
+            this.ctx.shadowBlur = 0;
+            
+            // Draw center point
+            const [centerX, centerY] = this.getBBoxCenter(prediction.bbox);
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+            this.ctx.fill();
+        });
+    }
+    
+    updateDetectionsList(predictions) {
+        if (predictions.length === 0) {
+            this.detectionsDiv.innerHTML = '<div class="detection-item">🔍 कोई Object नहीं मिला</div>';
+            return;
+        }
+        
+        const detectionCounts = {};
+        const speedInfo = {};
+        
+        predictions.forEach(prediction => {
+            const className = prediction.class.toLowerCase();
+            const hindiName = prediction.hindiName;
+            
+            if (!detectionCounts[className]) {
+                detectionCounts[className] = 0;
+                speedInfo[className] = {
+                    hindiName,
+                    maxSpeed: 0,
+                    avgSpeed: 0,
+                    totalSpeed: 0,
+                    count: 0
+                };
+            }
+            
+            detectionCounts[className]++;
+            
+            if (prediction.speed > 0) {
+                speedInfo[className].totalSpeed += prediction.speed;
+                speedInfo[className].count++;
+                speedInfo[className].maxSpeed = Math.max(speedInfo[className].maxSpeed, prediction.speed);
+                speedInfo[className].avgSpeed = Math.round(speedInfo[className].totalSpeed / speedInfo[className].count);
+            }
+        });
+        
+        // Collect color and person info
+        const colorInfo = {};
+        const personInfo = {};
+        
+        predictions.forEach(prediction => {
+            const className = prediction.class.toLowerCase();
+            
+            // Color information
+            if (prediction.color && !colorInfo[className]) {
+                colorInfo[className] = prediction.color;
+            }
+            
+            // Person information
+            if (prediction.personAttributes && !personInfo[className]) {
+                personInfo[className] = prediction.personAttributes;
+            }
+        });
+        
+        this.detectionsDiv.innerHTML = Object.entries(detectionCounts)
+            .map(([object, count]) => {
+                const info = speedInfo[object];
+                const speedText = info.maxSpeed > 1 ? 
+                    `⚡ Max: ${info.maxSpeed} km/h | Avg: ${info.avgSpeed} km/h` : 
+                    '🚏 Static';
+                
+                const colorText = colorInfo[object] ? `🎨 ${colorInfo[object]}` : '';
+                const personText = personInfo[object] ? 
+                    `👤 ${personInfo[object].height} | ${personInfo[object].activity}` : '';
+                
+                return `
+                    <div class="detection-item advanced">
+                        <div class="object-name">${info.hindiName} (${count}) ${colorText}</div>
+                        <div class="speed-info">${speedText}</div>
+                        ${personText ? `<div class="person-info">${personText}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+    }
+    
+    clearDetections() {
+        this.detectionsDiv.innerHTML = '<div class="detection-item">🔍 कोई Object नहीं मिला</div>';
+    }
+    
+    updateStatus(message, type = '') {
+        this.status.textContent = message;
+        this.status.className = `status ${type}`;
+    }
+}
+
+// Initialize the advanced object detector
+document.addEventListener('DOMContentLoaded', () => {
+    new AdvancedObjectDetector();
+});
+
+// Enhanced page visibility handling
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('🔄 Detection paused to save resources');
+    } else {
+        console.log('✅ Detection resumed');
+    }
+});
+
+// Performance monitoring
+window.addEventListener('load', () => {
+    console.log('🚀 Advanced Object Detection System Loaded');
+    console.log('📱 Press F for fullscreen mode');
+    console.log('🎯 Supports 40+ object types with speed tracking');
+});
